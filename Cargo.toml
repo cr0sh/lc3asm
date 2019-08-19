@@ -1,0 +1,31 @@
+[package]
+name = "lc3asm"
+version = "0.1.0"
+authors = ["cr0sh <ska827@snu.ac.kr>"]
+edition = "2018"
+
+description = "LC-3 assembly parser & assembler"
+license = "GPL-2.0-only"
+repository = "https://github.com/cr0sh/lc3asm"
+readme = "README.md"
+categories = ["command-line-utilities", "parser-implementations"]
+
+[dependencies]
+pest = "2"
+pest_derive = "2"
+unescape = "0.1"
+bitstream-io = "0.8"
+structopt = { version = "0.2", optional = true }
+
+[features]
+binary-build = ["structopt"]
+
+[dev-dependencies]
+lc3-rs = "0.4"
+console = "0.7"
+lc3dbg = "1.2"
+lazy_static = "1.3"
+
+[[bin]]
+name = "lc3asm"
+required-features = ["binary-build"]

@@ -1,0 +1,88 @@
+WHITESPACE = _{ (" " | "\t" | "\r" | "\n") }
+COMMENT = _{";" ~ (!NEWLINE ~ ANY)* }
+
+decimal = @{ "#"? ~ "-"? ~ ASCII_DIGIT+ }
+hexadecimal = @{ ^"x" ~ "-"? ~ ASCII_HEX_DIGIT+ }
+number = @{ decimal | hexadecimal }
+register = @{ ^"r" ~ ASCII_DIGIT }
+label = @{ (!ASCII_DIGIT ~ !WHITESPACE) ~ (!WHITESPACE ~ ASCII_ALPHANUMERIC)+ }
+addressable = _{ label | number }
+
+// https://pest.rs/book/examples/json.html#writing-the-grammar
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+comma = _{ "," }
+
+label_decl = { label }
+
+// Instructions
+add = { ( ^"ADD " | ^"ADD\t") ~ register ~ comma ~ register ~ comma ~ register }
+add_immd = { ( ^"ADD " | ^"ADD\t") ~ register ~ comma ~ register ~ comma ~ (decimal | hexadecimal) }
+and = { ( ^"AND " | ^"AND\t") ~ register ~ comma ~ register ~ comma ~ register }
+and_immd = { ( ^"AND " | ^"AND\t") ~ register ~ comma ~ register ~ comma ~ (decimal | hexadecimal) }
+not = { ( ^"NOT " | ^"NOT\t") ~ register ~ comma ~ register }
+br = ${ ^"BR" ~ br_option ~ (!NEWLINE ~ WHITESPACE)+ ~ addressable}
+jmp = { ( ^"JMP " | ^"JMP\t") ~ register }
+jsr = { ( ^"JSR " | ^"JSR\t") ~ addressable }
+jsrr = { ( ^"JSRR " | ^"JSRR\t") ~ register }
+ld = { ( ^"LD " | ^"LD\t") ~ register ~ comma ~ addressable }
+ldi = { ( ^"LDI " | ^"LDI\t") ~ register ~ comma ~ addressable }
+ldr = { ( ^"LDR " | ^"LDR\t") ~ register ~ comma ~ register ~ comma ~ number }
+st = { ( ^"ST " | ^"ST\t") ~ register ~ comma ~ addressable }
+sti = { ( ^"STI " | ^"STI\t") ~ register ~ comma ~ addressable }
+str = { ( ^"STR " | ^"STR\t") ~ register ~ comma ~ register ~ comma ~ number }
+lea = { ( ^"LEA " | ^"LEA\t") ~ register ~ comma ~ addressable }
+rti = { ^"RTI" }
+ret = { ^"RET" }
+trap = { ( ^"TRAP " | ^"TRAP\t") ~ number }
+nop = { ^"NOP" }
+
+br_n = @{ ("z" | "p")? ~ "n" ~ ("z" | "p")? }
+br_z = @{ ("p" | "n")? ~ "z" ~ ("p" | "n")? }
+br_p = @{ ("n" | "z")? ~ "p" ~ ("n" | "z")? }
+br_option = @{ br_n? ~ br_z? ~ br_p? }
+
+instruction = { add
+                | add_immd
+                | and
+                | and_immd
+                | not
+                | br
+                | jmp
+                | jsr
+                | jsrr
+                | ld
+                | ldi
+                | ldr
+                | st
+                | sti
+                | str
+                | lea
+                | rti
+                | ret
+                | trap
+                | nop }
+
+// Pseudo-operations
+orig = ${ ^".orig" ~ ( " " | "\t" )+ ~ number }
+end = ${ ^".end" }
+blkw = ${ ^".blkw" ~ ( " " | "\t" )+ ~ number }
+fill = ${ ^".fill" ~ ( " " | "\t" )+ ~ number}
+stringz = ${ ^".stringz" ~ ( " " | "\t" )+ ~  string }
+
+pseudo_op = _{ /* orig
+                | end
+                | */ blkw
+                | fill
+                | stringz }
+
+// Trap codes
+trap_code = ${ (^"halt" | ^"in" | ^"out" | ^"puts" | ^"putsp" | ^"getc") ~ WHITESPACE+ }
+code = _{ instruction | pseudo_op | trap_code }
+file = _{ SOI ~ orig ~ (!end ~ (code | label_decl))* ~ end ~ EOI }
