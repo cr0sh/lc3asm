@@ -5,7 +5,7 @@ Copyright (C) 2019 Nam Jeonghyun. (ska827@snu.ac.kr)
 ```
 
 ## Installation
-`cargo install lc3asm`
+`cargo install lc3asm --features binary-build`
 
 ## Assembly language parser
 `lc3asm::AsmParser` and `lc3asm::Rule` provides an assembly parser and rules. Parser grammar follows definitions
