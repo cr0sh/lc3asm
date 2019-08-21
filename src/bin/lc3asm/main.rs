@@ -44,7 +44,7 @@ fn main() -> Result<(), lc3asm::Error> {
     let mut default_out_path = opt.input;
     default_out_path.set_extension("obj");
     let obj_output_path = opt.output.unwrap_or(default_out_path);
-    let sym_output_path = obj_output_path.clone();
+    let mut sym_output_path = obj_output_path.clone();
     sym_output_path.set_extension("sym");
     fs::write(obj_output_path, assembled)?;
     fs::write(sym_output_path, symbol_table)?;
