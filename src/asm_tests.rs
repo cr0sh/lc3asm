@@ -18,7 +18,7 @@ macro_rules! asm_test {
         fn $name() -> Result<(), Error> {
             #![allow(unused_variables, unused_assignments, unused_mut)]
             let mut vm = VM::new();
-            let obj = assemble($code)?;
+            let obj = assemble($code)?.0;
             vm.load_u8(obj.as_ref());
 
             asm_test!(@insert_mem_values vm $(,$in_addr <- $in_value)*);

@@ -5,13 +5,17 @@ use pest::error::ErrorVariant as PestErrorVariant;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use pest_derive::Parser;
-use std::collections::HashMap;
 use std::io::{ErrorKind as IOErrorKind, Write};
 use unescape::unescape;
 
+use crate::util::parse_number_literal;
+use symbol_table::SymbolTable;
+use crate::symbol_table::table_to_string;
+
 #[cfg(test)]
 mod asm_tests;
-mod error;
+pub(crate) mod error;
+mod symbol_table;
 mod util;
 
 /// Parser struct.
@@ -24,15 +28,15 @@ pub fn parse(input: &str) -> Result<Pairs<Rule>, PestError<Rule>> {
     AsmParser::parse(Rule::file, input)
 }
 
-/// Reads code from input and produces object code output.
-pub fn assemble(input: impl AsRef<str>) -> Result<Vec<u8>, Error> {
+/// Reads code from input and produces object code output and symbol table.
+pub fn assemble(input: impl AsRef<str>) -> Result<(Vec<u8>, Vec<u8>), Error> {
     let asm_parsed = parse(input.as_ref())?.collect();
     assemble_from_pairs(asm_parsed)
 }
 
 /// Reads code from slice of pairs and produces object code output.
-pub fn assemble_from_pairs(asm_parsed: Vec<Pair<Rule>>) -> Result<Vec<u8>, Error> {
-    let (symbols, size) = first_pass(&asm_parsed)?; // TODO: export symbol table to file
+pub fn assemble_from_pairs(asm_parsed: Vec<Pair<Rule>>) -> Result<(Vec<u8>, Vec<u8>), Error> {
+    let (symbols, size, entry) = first_pass(&asm_parsed)?;
     let buf: Vec<u8> = Vec::with_capacity(size);
     let mut wr = util::BitVecWriter::new(buf);
 
@@ -48,17 +52,26 @@ pub fn assemble_from_pairs(asm_parsed: Vec<Pair<Rule>>) -> Result<Vec<u8>, Error
     let buf = wr.into_inner().into_writer();
     assert_eq!(buf.len(), size * 2 + 2);
 
-    Ok(buf)
+    let table = table_to_string(symbols, entry)?;
+
+    Ok((buf, table.into_bytes()))
 }
 
-type SymbolTable<'i> = HashMap<String, (usize, Pair<'i, Rule>)>;
-
-fn first_pass<'i>(pairs: &[Pair<'i, Rule>]) -> Result<(SymbolTable<'i>, usize), Error> {
-    let mut symbols: HashMap<String, (usize, Pair<Rule>)> = HashMap::new();
+fn first_pass<'i>(pairs: &[Pair<'i, Rule>]) -> Result<(SymbolTable<'i>, usize, usize), Error> {
+    let mut symbols = SymbolTable::new();
     let mut offset = 0;
+    let mut entry: Option<usize> = None;
 
     for pair in pairs {
         match pair.as_rule() {
+            Rule::orig => {
+                if entry.is_some() {
+                    panic!("Cannot have multiple .ORIG pseudo-operation");
+                }
+                entry = Some(
+                    parse_number_literal(pair.clone().into_inner().next().unwrap().as_str())? as usize,
+                );
+            }
             Rule::label_decl => {
                 let name = pair.as_str();
                 if let Some((_, prev_pair)) = symbols.get(name) {
@@ -107,7 +120,11 @@ fn first_pass<'i>(pairs: &[Pair<'i, Rule>]) -> Result<(SymbolTable<'i>, usize), 
         }
     }
 
-    Ok((symbols, offset))
+    Ok((
+        symbols,
+        offset,
+        entry.expect("Expected a .ORIG pseudo-operation for file"),
+    ))
 }
 
 fn second_pass<W: Write>(

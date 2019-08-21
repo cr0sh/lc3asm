@@ -37,12 +37,16 @@ fn main() -> Result<(), lc3asm::Error> {
         eprintln!("{:#?}", pairs)
     }
 
-    let assembled = lc3asm::assemble_from_pairs(pairs.collect()).map_err(|err| {
+    let (assembled, symbol_table) = lc3asm::assemble_from_pairs(pairs.collect()).map_err(|err| {
         eprintln!("Cannot assemble {}\n{}", input_str, err);
         err
     })?;
     let mut default_out_path = opt.input;
     default_out_path.set_extension("obj");
-    fs::write(opt.output.unwrap_or(default_out_path), assembled)?;
+    let obj_output_path = opt.output.unwrap_or(default_out_path);
+    let sym_output_path = obj_output_path.clone();
+    sym_output_path.set_extension("sym");
+    fs::write(obj_output_path, assembled)?;
+    fs::write(sym_output_path, symbol_table)?;
     Ok(())
 }

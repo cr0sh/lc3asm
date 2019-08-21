@@ -1,6 +1,7 @@
 //! Provides [Error] type for error handling.
 use super::Rule;
 use pest::error::Error as PestError;
+use std::fmt::Error as FmtError;
 use std::io::Error as IOError;
 use std::num::ParseIntError;
 use std::str::Utf8Error;
@@ -12,6 +13,7 @@ pub enum Error {
     ParseInt(ParseIntError),
     Io(IOError),
     Utf8(Utf8Error),
+    Fmt(FmtError),
 }
 
 impl From<PestError<Rule>> for Error {
@@ -38,6 +40,12 @@ impl From<Utf8Error> for Error {
     }
 }
 
+impl From<FmtError> for Error {
+    fn from(e: FmtError) -> Error {
+        Error::Fmt(e)
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -46,6 +54,7 @@ impl std::fmt::Display for Error {
             Error::ParseInt(err) => err.fmt(f),
             Error::Io(err) => err.fmt(f),
             Error::Utf8(err) => err.fmt(f),
+            Error::Fmt(err) => err.fmt(f),
         }
     }
 }
