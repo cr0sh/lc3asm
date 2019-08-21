@@ -42,7 +42,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             // FIXME: why intellij-rust tries to match fmt with Debug when err.fmt(f)?
-            Error::Pest(err) => std::fmt::Display::fmt(err,f),
+            Error::Pest(err) => std::fmt::Display::fmt(err, f),
             Error::ParseInt(err) => err.fmt(f),
             Error::Io(err) => err.fmt(f),
             Error::Utf8(err) => err.fmt(f),
